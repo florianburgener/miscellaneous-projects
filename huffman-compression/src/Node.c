@@ -2,7 +2,7 @@
 
 static void _Node_print(Node *self, size_t padding);
 static void _Node_compute_depths(Node *self, uint32_t depth);
-static VecU8 *_Node_find_binary(Node *self, char c, VecU8 *binary);
+static bool _Node_find_binary(Node *self, char c, VecU8 *binary);
 
 Node *Node_init() {
     Node *self = (Node *)malloc(sizeof(Node));
@@ -40,9 +40,17 @@ void Node_compute_depths(Node *self) {
     _Node_compute_depths(self, 0);
 }
 
-VecU8 *Node_find_binary(Node *self, char c) {
-    VecU8 *binary = VecU8_init(256);
-    return _Node_find_binary(self, c, binary);
+bool Node_find_binary(Node *self, char c, VecU8 **binary) {
+    // The maximum length of the binary is ASCII_EXTENDED_SIZE-1 (255) in the worst case, because the maximum number of leaf nodes is 256 (ASCII_EXTENDED_SIZE).
+    // This is due to the way the Huffman tree is defined.
+    *binary = VecU8_init(ASCII_EXTENDED_SIZE);
+
+    if (_Node_find_binary(self, c, *binary)) {
+        return true;
+    }
+
+    VecU8_destroy(binary);
+    return false;
 }
 
 bool Node_is_leaf(Node *self) {
@@ -80,37 +88,27 @@ static void _Node_compute_depths(Node *self, uint32_t depth) {
     _Node_compute_depths(self->right, depth + 1);
 }
 
-static VecU8 *_Node_find_binary(Node *self, char c, VecU8 *binary) {
-    if (self == NULL) {
-        VecU8_destroy(&binary);
-        return NULL;
+static bool _Node_find_binary(Node *self, char c, VecU8 *binary) {
+    if (Node_is_leaf(self)) {
+        if (self->value == c) {
+            return true;
+        }
+
+        return false;
     }
 
-    if (self->value == c) {
-        return binary;
+    VecU8_push(binary, 0);
+
+    if (_Node_find_binary(self->left, c, binary)) {
+        return true;
     }
 
-    VecU8 *binary_copy;
-    VecU8 *result;
+    binary->items[binary->len - 1] = 1;
 
-    binary_copy = VecU8_init(256);
-    VecU8_copy(binary, binary_copy);
-    VecU8_push(binary_copy, 0);
-    result = _Node_find_binary(self->left, c, binary_copy);
-    if (result != NULL) {
-        VecU8_destroy(&binary);
-        return result;
+    if (_Node_find_binary(self->right, c, binary)) {
+        return true;
     }
 
-    binary_copy = VecU8_init(256);
-    VecU8_copy(binary, binary_copy);
-    VecU8_push(binary_copy, 1);
-    result = _Node_find_binary(self->right, c, binary_copy);
-    if (result != NULL) {
-        VecU8_destroy(&binary);
-        return result;
-    }
-
-    VecU8_destroy(&binary);
-    return NULL;
+    VecU8_pop(binary, binary->len - 1);
+    return false;
 }

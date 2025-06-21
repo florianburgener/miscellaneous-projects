@@ -7,6 +7,7 @@
 #include "Node.h"
 #include "String.h"
 #include "VecNode.h"
+#include "consts.h"
 #include "io.h"
 
 void compress(char *input_path, char *output_path);

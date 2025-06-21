@@ -18,6 +18,10 @@ void VecU8_push(VecU8 *self, uint8_t item);
 
 uint8_t VecU8_at(VecU8 *self, size_t index);
 
+void VecU8_delete_at_index(VecU8 *self, size_t index);
+
+uint8_t VecU8_pop(VecU8 *self, size_t index);
+
 void VecU8_copy(VecU8 *src, VecU8 *dest);
 
 #endif

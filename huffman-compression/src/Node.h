@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "VecU8.h"
+#include "consts.h"
 
 typedef struct Node {
     struct Node* left;
@@ -24,7 +25,7 @@ void Node_print(Node* self);
 
 void Node_compute_depths(Node* self);
 
-VecU8* Node_find_binary(Node* self, char c);
+bool Node_find_binary(Node* self, char c, VecU8** binary);
 
 bool Node_is_leaf(Node* self);
 

@@ -1,27 +1,26 @@
 #include "huffman.h"
 
-static uint32_t *count_chars(String *contents);
+static uint32_t *count_characters(String *contents);
 static void sorted_insert_by_frequency(VecNode *nodes, Node *new_node);
-static Node *create_huffman_tree(uint32_t occurrences[256]);
+static Node *create_huffman_tree(String *contents);
 static void get_leaf_nodes(Node *root, struct VecNode *nodes);
 static VecU8 *compress_contents(Node *root, String *contents);
 static Node *create_huffman_tree_from_leafs(VecNode *nodes);
 
 void compress(char *input_path, char *output_path) {
     String *contents = read_text_file(input_path);
-    uint32_t *char_counts = count_chars(contents);
+    Node *root = create_huffman_tree(contents);
 
-    Node *root = create_huffman_tree(char_counts);
-
-    VecNode *nodes = VecNode_init(256);
+    VecNode *nodes = VecNode_init(ASCII_EXTENDED_SIZE);
     get_leaf_nodes(root, nodes);
     VecU8 *bitstream = compress_contents(root, contents);
 
     write_compressed_file(output_path, nodes, bitstream);
 
     String_destroy(&contents);
-    free(char_counts);
-    Node_destroy(&root);
+    if (root != NULL) {
+        Node_destroy(&root);
+    }
     VecNode_destroy(&nodes);
     VecU8_destroy(&bitstream);
 }
@@ -36,10 +35,14 @@ void decompress(char *input_path, char *output_path) {
     String *contents = String_init(1024);
 
     for (size_t i = 0; i < bitstream->len; i++) {
-        if (VecU8_at(bitstream, i) == 0) {
-            current = current->left;
-        } else {
-            current = current->right;
+        if (!Node_is_leaf(root)) {
+            // We only move through the tree if the root node is not a leaf.
+            // If it is a leaf, this means that only one type of character has been compressed.
+            if (VecU8_at(bitstream, i) == 0) {
+                current = current->left;
+            } else {
+                current = current->right;
+            }
         }
 
         if (Node_is_leaf(current)) {
@@ -54,23 +57,25 @@ void decompress(char *input_path, char *output_path) {
 
     VecNode_destroy(&nodes);
     VecU8_destroy(&bitstream);
-    Node_destroy(&root);
+    if (root != NULL) {
+        Node_destroy(&root);
+    }
     String_destroy(&contents);
 }
 
-static uint32_t *count_chars(String *contents) {
-    uint32_t *char_counts = (uint32_t *)malloc(sizeof(uint32_t) * 256);
+static uint32_t *count_characters(String *contents) {
+    uint32_t *char_count = (uint32_t *)malloc(sizeof(uint32_t) * ASCII_EXTENDED_SIZE);
 
-    for (size_t i = 0; i < 256; i++) {
-        char_counts[i] = 0;
+    for (size_t i = 0; i < ASCII_EXTENDED_SIZE; i++) {
+        char_count[i] = 0;
     }
 
     for (size_t i = 0; i < contents->len; i++) {
         char c = String_at(contents, i);
-        char_counts[(size_t)c] += 1;
+        char_count[(size_t)c] += 1;
     }
 
-    return char_counts;
+    return char_count;
 }
 
 static void sorted_insert_by_frequency(VecNode *nodes, Node *new_node) {
@@ -86,16 +91,24 @@ static void sorted_insert_by_frequency(VecNode *nodes, Node *new_node) {
     VecNode_insert_at_index(nodes, index, new_node);
 }
 
-static Node *create_huffman_tree(uint32_t occurrences[256]) {
-    VecNode *nodes = VecNode_init(256);
+static Node *create_huffman_tree(String *contents) {
+    uint32_t *char_count = count_characters(contents);
+    VecNode *nodes = VecNode_init(ASCII_EXTENDED_SIZE);
 
-    for (size_t i = 0; i < 256; i++) {
-        if (occurrences[i] > 0) {
+    for (size_t i = 0; i < ASCII_EXTENDED_SIZE; i++) {
+        if (char_count[i] > 0) {
             Node *node = Node_init();
             node->value = (char)i;
-            node->frequency = occurrences[i];
+            node->frequency = char_count[i];
             sorted_insert_by_frequency(nodes, node);
         }
+    }
+
+    free(char_count);
+
+    if (nodes->len == 0) {
+        VecNode_destroy(&nodes);
+        return NULL;
     }
 
     while (nodes->len != 1) {
@@ -130,20 +143,45 @@ static VecU8 *compress_contents(Node *root, String *contents) {
     // Compressed content will never be larger than its original size, hence the capacity being the original size.
     VecU8 *bitstream = VecU8_init(contents->len * 8);
 
+    if (root == NULL) {
+        return bitstream;
+    }
+
+    VecU8 *binary_by_char[ASCII_EXTENDED_SIZE];
+
+    for (size_t i = 0; i < ASCII_EXTENDED_SIZE; i++) {
+        if (!Node_find_binary(root, (char)i, &binary_by_char[i])) {
+            continue;
+        }
+
+        // Special case when the file contains only one type of character.
+        if (binary_by_char[i]->len == 0 && Node_is_leaf(root)) {
+            VecU8_push(binary_by_char[i], 0);
+        }
+    }
+
     for (size_t i = 0; i < contents->len; i++) {
-        VecU8 *binary = Node_find_binary(root, String_at(contents, i));
+        VecU8 *binary = binary_by_char[(size_t)String_at(contents, i)];
 
         for (size_t j = 0; j < binary->len; j++) {
             VecU8_push(bitstream, VecU8_at(binary, j));
         }
+    }
 
-        VecU8_destroy(&binary);
+    for (size_t i = 0; i < ASCII_EXTENDED_SIZE; i++) {
+        if (binary_by_char[i] != NULL) {
+            VecU8_destroy(&binary_by_char[i]);
+        }
     }
 
     return bitstream;
 }
 
 static Node *create_huffman_tree_from_leafs(VecNode *nodes) {
+    if (nodes->len == 0) {
+        return NULL;
+    }
+
     uint8_t current_depth = 0;
 
     for (size_t i = 0; i < nodes->len; i++) {
@@ -180,6 +218,5 @@ static Node *create_huffman_tree_from_leafs(VecNode *nodes) {
         VecNode_insert_at_index(nodes, index, parent);
     }
 
-    Node *root = VecNode_pop(nodes, 0);
-    return root;
+    return VecNode_pop(nodes, 0);
 }
