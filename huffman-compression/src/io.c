@@ -36,13 +36,7 @@ void write_compressed_file(char *path, VecNode *nodes, VecU8 *bitstream) {
         exit(EXIT_FAILURE);
     }
 
-    // The first 4 bytes contain the size in bits of the compressed data.
-    write_byte(file, bitstream->len & 0xFF);
-    write_byte(file, (bitstream->len >> 8) & 0xFF);
-    write_byte(file, (bitstream->len >> 16) & 0xFF);
-    write_byte(file, (bitstream->len >> 24) & 0xFF);
-
-    // The 5th byte represents the number of leaves in the Huffman tree.
+    // The first byte represents the number of leaves in the Huffman tree.
     write_byte(file, nodes->len);
 
     // Write the nodes that will be used to reconstruct the Huffman tree.
@@ -51,6 +45,12 @@ void write_compressed_file(char *path, VecNode *nodes, VecU8 *bitstream) {
         write_byte(file, (uint8_t)VecNode_at(nodes, i)->value);
         write_byte(file, (uint8_t)VecNode_at(nodes, i)->depth);
     }
+
+    // The next 4 bytes represent the size of the compressed data in bits.
+    write_byte(file, bitstream->len & 0xFF);
+    write_byte(file, (bitstream->len >> 8) & 0xFF);
+    write_byte(file, (bitstream->len >> 16) & 0xFF);
+    write_byte(file, (bitstream->len >> 24) & 0xFF);
 
     // Write the compressed data.
     write_bitstream(file, bitstream);
@@ -68,13 +68,7 @@ void read_compressed_file(char *path, VecNode **nodes, VecU8 **bitstream) {
         exit(EXIT_FAILURE);
     }
 
-    // The first 4 bytes contain the size in bits of the compressed data.
-    size_t bitstream_len = 0;
-    for (size_t i = 0; i < 4; i++) {
-        bitstream_len += ((size_t)read_byte(file)) << (i * 8);
-    }
-
-    // The 5th byte represents the number of leaves in the Huffman tree.
+    // The first byte represents the number of leaves in the Huffman tree.
     size_t nodes_len = (size_t)read_byte(file);
     *nodes = VecNode_init(nodes_len);
 
@@ -84,6 +78,12 @@ void read_compressed_file(char *path, VecNode **nodes, VecU8 **bitstream) {
         node->value = (char)read_byte(file);
         node->depth = read_byte(file);
         VecNode_push(*nodes, node);
+    }
+
+    // The next 4 bytes represent the size of the compressed data in bits.
+    size_t bitstream_len = 0;
+    for (size_t i = 0; i < 4; i++) {
+        bitstream_len += ((size_t)read_byte(file)) << (i * 8);
     }
 
     // Read the compressed data.
