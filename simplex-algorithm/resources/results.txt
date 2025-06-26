@@ -1,0 +1,23 @@
+ex1  : Temps = 8 ms, Valeur de la fonction objectif = 449.5295
+ex2  : Temps = 9 ms, Valeur de la fonction objectif = 4483.4997
+ex3  : Temps = 1 ms, Valeur de la fonction objectif = 3017.4008
+ex4  : No solution ???
+ex5  : Temps = 2 ms, Valeur de la fonction objectif = 1700.9452
+
+lex1 : Temps = 2 ms, Valeur de la fonction objectif = 3435.7463
+    Assistant :
+        # 1060.39 seconds
+        Optimal = 1116.994219303131
+lex2 : Temps = 6 ms, Valeur de la fonction objectif =  2890.4829
+    Assistant :
+        # 992 seconds
+        Optimal = 1004.2365968227386
+lex3 : Temps = 5 ms, Valeur de la fonction objectif = 5588.2169
+    Assistant :
+        # 1943.73 seconds
+        Optimal = 1967.985062122345
+
+mex1 : Temps = 4 ms, Valeur de la fonction objectif = 4948.6318
+mex2 : Temps = 7 ms, Valeur de la fonction objectif = 2302.8763
+mex3 : Temps = 2 ms, Valeur de la fonction objectif = 583.2841
+mex4 : No solution ???
