@@ -4,71 +4,55 @@ class Node:
         self.left = None
         self.right = None
 
-    def insert(self, value):
-        current = self
+    def _search(self, value):
+        parent = None
+        node = self
 
-        while value != current.value:
-            if value < current.value:
-                if current.left is None:
-                    current.left = Node(value)
-                    return
-                current = current.left
-            else:
-                if current.right is None:
-                    current.right = Node(value)
-                    return
-                current = current.right
+        while node and node.value != value:
+            parent = node
+            node = node.left if value < node.value else node.right
+
+        return parent, node
+
+    def insert(self, value):
+        parent, _ = self._search(value)
+
+        if value < parent.value:
+            parent.left = Node(value)
+        else:
+            parent.right = Node(value)
 
     def search(self, value):
-        current = self
-
-        while current is not None:
-            if value == current.value:
-                return True
-            if value < current.value:
-                current = current.left
-            else:
-                current = current.right
-
-        return False
+        _, node = self._search(value)
+        return node is not None
 
     def _find_largest_value(self):
-        current = self
+        node = self
 
-        while current.right is not None:
-            current = current.right
+        while node.right:
+            node = node.right
 
-        return current.value
+        return node.value
 
     def delete(self, value):
-        parent = None
-        current = self
+        parent, node = self._search(value)
 
-        while current is not None and value != current.value:
-            parent = current
-
-            if value < current.value:
-                current = current.left
-            else:
-                current = current.right
-
-        # The value to be deleted does not exist in the tree.
-        if current is None:
+        if not node:
             return self
 
-        if current.left is not None and current.right is not None:
-            largest_value = current.left._find_largest_value()
-            replacement = current
+        if node.left and node.right:
+            largest_value = node.left._find_largest_value()
+            replacement = node
             replacement.delete(largest_value)
             replacement.value = largest_value
-        elif current.left is not None:
-            replacement = current.left
-        elif current.right is not None:
-            replacement = current.right
+        elif node.left:
+            replacement = node.left
+        elif node.right:
+            replacement = node.right
         else:
             replacement = None
 
-        if parent is None:
+        if not parent:
             return replacement
 
         if value < parent.value:
@@ -103,13 +87,13 @@ class BinarySearchTree:
         self.root = None
 
     def insert(self, value):
-        if self.root is None:
+        if not self.root:
             self.root = Node(value)
         else:
             self.root.insert(value)
 
     def search(self, value):
-        if self.root is None:
+        if not self.root:
             return False
         return self.root.search(value)
 
@@ -117,7 +101,7 @@ class BinarySearchTree:
         self.root = self.root.delete(value)
 
     def __str__(self):
-        if self.root is None:
+        if not self.root:
             return "Empty"
         return str(self.root)
 
